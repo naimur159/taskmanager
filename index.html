@@ -24,13 +24,20 @@
             <!-- Task Input Section -->
             <section class="task-input-section">
                 <div class="task-input-container">
-                    <input 
-                        type="text" 
-                        id="taskInput" 
-                        class="task-input" 
-                        placeholder="What needs to be done?"
-                        maxlength="100"
-                    >
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="taskInput" 
+                            class="task-input" 
+                            placeholder="What needs to be done?"
+                            maxlength="100"
+                        >
+                        <input 
+                            type="datetime-local" 
+                            id="deadlineInput" 
+                            class="deadline-input"
+                        >
+                    </div>
                     <button id="addTaskBtn" class="add-task-btn">
                         <i class="fas fa-plus"></i>
                         Add Task
@@ -52,6 +59,10 @@
                     <button class="filter-btn" data-filter="completed">
                         <i class="fas fa-check-circle"></i>
                         Completed
+                    </button>
+                    <button class="filter-btn" data-filter="expired">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Expired
                     </button>
                 </div>
                 <div class="task-stats">
@@ -92,13 +103,20 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <input 
-                        type="text" 
-                        id="editTaskInput" 
-                        class="edit-task-input" 
-                        placeholder="Edit your task..."
-                        maxlength="100"
-                    >
+                    <div class="modal-input-group">
+                        <input 
+                            type="text" 
+                            id="editTaskInput" 
+                            class="edit-task-input" 
+                            placeholder="Edit your task..."
+                            maxlength="100"
+                        >
+                        <input 
+                            type="datetime-local" 
+                            id="editDeadlineInput" 
+                            class="edit-deadline-input"
+                        >
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button id="saveEditBtn" class="save-edit-btn">

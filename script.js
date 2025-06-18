@@ -7,6 +7,7 @@ class TaskManager {
         
         // DOM Elements
         this.taskInput = document.getElementById('taskInput');
+        this.deadlineInput = document.getElementById('deadlineInput');
         this.addTaskBtn = document.getElementById('addTaskBtn');
         this.taskList = document.getElementById('taskList');
         this.emptyState = document.getElementById('emptyState');
@@ -15,18 +16,22 @@ class TaskManager {
         this.clearCompletedBtn = document.getElementById('clearCompletedBtn');
         this.editModal = document.getElementById('editModal');
         this.editTaskInput = document.getElementById('editTaskInput');
+        this.editDeadlineInput = document.getElementById('editDeadlineInput');
         this.saveEditBtn = document.getElementById('saveEditBtn');
         this.cancelEditBtn = document.getElementById('cancelEditBtn');
         this.closeModal = document.getElementById('closeModal');
         
         this.initializeApp();
         this.bindEvents();
+        this.startExpirationChecker();
     }
     
     initializeApp() {
         this.loadTasks();
+        this.checkExpiredTasks();
         this.renderTasks();
         this.updateUI();
+        this.setDefaultDeadline();
     }
     
     bindEvents() {
@@ -69,22 +74,30 @@ class TaskManager {
         const text = this.taskInput.value.trim();
         if (!text) return;
         
+        const deadline = this.deadlineInput.value;
+        const deadlineDate = deadline ? new Date(deadline).toISOString() : null;
+        
         const task = {
             id: Date.now().toString(),
             text: text,
             completed: false,
+            expired: false,
+            deadline: deadlineDate,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
         this.tasks.unshift(task);
         this.saveTasks();
+        this.checkExpiredTasks();
         this.renderTasks();
         this.updateUI();
         
         // Clear input and focus
         this.taskInput.value = '';
+        this.deadlineInput.value = '';
         this.taskInput.focus();
+        this.setDefaultDeadline();
         
         // Show success feedback
         this.showNotification('Task added successfully!', 'success');
@@ -109,6 +122,16 @@ class TaskManager {
         if (task) {
             this.editingTaskId = id;
             this.editTaskInput.value = task.text;
+            
+            // Set deadline in edit modal
+            if (task.deadline) {
+                const deadlineDate = new Date(task.deadline);
+                const localDateTime = new Date(deadlineDate.getTime() - deadlineDate.getTimezoneOffset() * 60000);
+                this.editDeadlineInput.value = localDateTime.toISOString().slice(0, 16);
+            } else {
+                this.editDeadlineInput.value = '';
+            }
+            
             this.editTaskInput.focus();
             this.editTaskInput.select();
             this.editModal.classList.add('show');
@@ -122,8 +145,10 @@ class TaskManager {
         const task = this.tasks.find(t => t.id === this.editingTaskId);
         if (task) {
             task.text = text;
+            task.deadline = this.editDeadlineInput.value ? new Date(this.editDeadlineInput.value).toISOString() : null;
             task.updatedAt = new Date().toISOString();
             this.saveTasks();
+            this.checkExpiredTasks();
             this.renderTasks();
             this.closeEditModal();
             this.showNotification('Task updated successfully!', 'success');
@@ -153,6 +178,71 @@ class TaskManager {
         }
     }
     
+    // Deadline and Expiration Management
+    checkExpiredTasks() {
+        const now = new Date();
+        let hasChanges = false;
+        
+        this.tasks.forEach(task => {
+            if (task.deadline && !task.completed) {
+                const deadline = new Date(task.deadline);
+                const isExpired = deadline < now;
+                
+                if (isExpired !== task.expired) {
+                    task.expired = isExpired;
+                    hasChanges = true;
+                }
+            } else if (task.expired && !task.deadline) {
+                task.expired = false;
+                hasChanges = true;
+            }
+        });
+        
+        if (hasChanges) {
+            this.saveTasks();
+        }
+    }
+    
+    startExpirationChecker() {
+        // Check for expired tasks every minute
+        setInterval(() => {
+            this.checkExpiredTasks();
+            this.renderTasks();
+            this.updateUI();
+        }, 60000);
+    }
+    
+    setDefaultDeadline() {
+        // Set default deadline to tomorrow at 9 AM
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        
+        const localDateTime = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000);
+        this.deadlineInput.value = localDateTime.toISOString().slice(0, 16);
+    }
+    
+    getDeadlineStatus(deadline) {
+        if (!deadline) return { status: 'none', text: 'No deadline' };
+        
+        const now = new Date();
+        const deadlineDate = new Date(deadline);
+        const diffTime = deadlineDate - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffTime < 0) {
+            return { status: 'expired', text: 'Expired' };
+        } else if (diffDays === 0) {
+            return { status: 'urgent', text: 'Due today' };
+        } else if (diffDays === 1) {
+            return { status: 'urgent', text: 'Due tomorrow' };
+        } else if (diffDays <= 3) {
+            return { status: 'urgent', text: `Due in ${diffDays} days` };
+        } else {
+            return { status: 'normal', text: `Due in ${diffDays} days` };
+        }
+    }
+    
     // Filtering
     setFilter(filter) {
         this.currentFilter = filter;
@@ -170,9 +260,11 @@ class TaskManager {
     getFilteredTasks() {
         switch (this.currentFilter) {
             case 'active':
-                return this.tasks.filter(t => !t.completed);
+                return this.tasks.filter(t => !t.completed && !t.expired);
             case 'completed':
                 return this.tasks.filter(t => t.completed);
+            case 'expired':
+                return this.tasks.filter(t => t.expired && !t.completed);
             default:
                 return this.tasks;
         }
@@ -223,14 +315,32 @@ class TaskManager {
             minute: '2-digit'
         });
         
+        const deadlineStatus = this.getDeadlineStatus(task.deadline);
+        const deadlineText = task.deadline ? 
+            new Date(task.deadline).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : '';
+        
+        const deadlineIcon = deadlineStatus.status === 'expired' ? 'fas fa-exclamation-triangle' :
+                           deadlineStatus.status === 'urgent' ? 'fas fa-clock' : 'fas fa-calendar';
+        
         return `
-            <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}">
+            <div class="task-item ${task.completed ? 'completed' : ''} ${task.expired ? 'expired' : ''}" data-task-id="${task.id}">
                 <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-task-id="${task.id}">
                     ${task.completed ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="task-content">
                     <div class="task-text">${this.escapeHtml(task.text)}</div>
                     <div class="task-date">Created: ${date}</div>
+                    ${task.deadline ? `
+                        <div class="task-deadline ${deadlineStatus.status}">
+                            <i class="${deadlineIcon}"></i>
+                            <span>${deadlineText} (${deadlineStatus.text})</span>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="task-actions">
                     <button class="task-btn edit-btn" data-task-id="${task.id}" title="Edit task">
@@ -248,7 +358,8 @@ class TaskManager {
     updateUI() {
         const totalTasks = this.tasks.length;
         const completedTasks = this.tasks.filter(t => t.completed).length;
-        const activeTasks = totalTasks - completedTasks;
+        const activeTasks = this.tasks.filter(t => !t.completed && !t.expired).length;
+        const expiredTasks = this.tasks.filter(t => t.expired && !t.completed).length;
         
         // Update task count
         let countText = '';
@@ -258,6 +369,9 @@ class TaskManager {
                 break;
             case 'completed':
                 countText = `${completedTasks} completed task${completedTasks !== 1 ? 's' : ''}`;
+                break;
+            case 'expired':
+                countText = `${expiredTasks} expired task${expiredTasks !== 1 ? 's' : ''}`;
                 break;
             default:
                 countText = `${totalTasks} total task${totalTasks !== 1 ? 's' : ''}`;
@@ -277,6 +391,7 @@ class TaskManager {
         this.editModal.classList.remove('show');
         this.editingTaskId = null;
         this.editTaskInput.value = '';
+        this.editDeadlineInput.value = '';
     }
     
     // Local Storage
@@ -368,18 +483,27 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
     // Check if this is the first time loading the app
     if (!localStorage.getItem('taskManager_tasks')) {
+        const now = new Date();
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
         const sampleTasks = [
             {
                 id: '1',
                 text: 'Welcome to TaskMaster! Click the checkbox to mark this as complete.',
                 completed: false,
+                expired: false,
+                deadline: null,
                 createdAt: new Date(Date.now() - 86400000).toISOString(),
                 updatedAt: new Date(Date.now() - 86400000).toISOString()
             },
             {
                 id: '2',
-                text: 'Try adding a new task using the input field above.',
+                text: 'Try adding a new task with a deadline using the input field above.',
                 completed: false,
+                expired: false,
+                deadline: tomorrow.toISOString(),
                 createdAt: new Date(Date.now() - 43200000).toISOString(),
                 updatedAt: new Date(Date.now() - 43200000).toISOString()
             },
@@ -387,8 +511,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: '3',
                 text: 'Use the filter buttons to view different task categories.',
                 completed: true,
+                expired: false,
+                deadline: null,
                 createdAt: new Date(Date.now() - 21600000).toISOString(),
                 updatedAt: new Date(Date.now() - 21600000).toISOString()
+            },
+            {
+                id: '4',
+                text: 'This task has expired and will appear in the Expired tab.',
+                completed: false,
+                expired: true,
+                deadline: yesterday.toISOString(),
+                createdAt: new Date(Date.now() - 172800000).toISOString(),
+                updatedAt: new Date(Date.now() - 172800000).toISOString()
+            },
+            {
+                id: '5',
+                text: 'This task is due next week - check the deadline display!',
+                completed: false,
+                expired: false,
+                deadline: nextWeek.toISOString(),
+                createdAt: new Date(Date.now() - 86400000).toISOString(),
+                updatedAt: new Date(Date.now() - 86400000).toISOString()
             }
         ];
         localStorage.setItem('taskManager_tasks', JSON.stringify(sampleTasks));
