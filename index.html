@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster - Personal Task Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">
+                    <i class="fas fa-tasks"></i>
+                    TaskMaster
+                </h1>
+                <p class="app-subtitle">Organize your life, one task at a time</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Task Input Section -->
+            <section class="task-input-section">
+                <div class="task-input-container">
+                    <input 
+                        type="text" 
+                        id="taskInput" 
+                        class="task-input" 
+                        placeholder="What needs to be done?"
+                        maxlength="100"
+                    >
+                    <button id="addTaskBtn" class="add-task-btn">
+                        <i class="fas fa-plus"></i>
+                        Add Task
+                    </button>
+                </div>
+            </section>
+
+            <!-- Task Filters -->
+            <section class="task-filters">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">
+                        <i class="fas fa-list"></i>
+                        All
+                    </button>
+                    <button class="filter-btn" data-filter="active">
+                        <i class="fas fa-clock"></i>
+                        Active
+                    </button>
+                    <button class="filter-btn" data-filter="completed">
+                        <i class="fas fa-check-circle"></i>
+                        Completed
+                    </button>
+                </div>
+                <div class="task-stats">
+                    <span id="taskCount" class="task-count">0 tasks</span>
+                </div>
+            </section>
+
+            <!-- Task List -->
+            <section class="task-list-section">
+                <div id="taskList" class="task-list">
+                    <!-- Tasks will be dynamically added here -->
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>No tasks yet</h3>
+                    <p>Add your first task to get started!</p>
+                </div>
+            </section>
+
+            <!-- Clear Completed Button -->
+            <section class="clear-section" id="clearSection" style="display: none;">
+                <button id="clearCompletedBtn" class="clear-completed-btn">
+                    <i class="fas fa-trash"></i>
+                    Clear Completed
+                </button>
+            </section>
+        </main>
+
+        <!-- Task Edit Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Task</h3>
+                    <button id="closeModal" class="close-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input 
+                        type="text" 
+                        id="editTaskInput" 
+                        class="edit-task-input" 
+                        placeholder="Edit your task..."
+                        maxlength="100"
+                    >
+                </div>
+                <div class="modal-footer">
+                    <button id="saveEditBtn" class="save-edit-btn">
+                        <i class="fas fa-save"></i>
+                        Save Changes
+                    </button>
+                    <button id="cancelEditBtn" class="cancel-edit-btn">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
